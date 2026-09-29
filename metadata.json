@@ -1,0 +1,8 @@
+{
+  "name": "Remix FairDorm Pro - ระบบหารค่าไฟหอพักตามการใช้งานจริง (Multi-Roommate \u0026 Dynamic Calculator)",
+  "description": "ระบบหารค่าไฟหอพักตามการใช้งานจริง (Multi-Roommate \u0026 Dynamic Calculator) รองรับรูมเมท 2-4 คน คำนวณแอร์ อุณหภูมิ และเครื่องใช้ไฟฟ้า พร้อมสลิปปั๊มตราประทับ",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
