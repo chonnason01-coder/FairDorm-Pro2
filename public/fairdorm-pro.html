@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>FairDorm Pro - ระบบหารค่าไฟหอพักตามการใช้งานจริง</title>
+  
+  <!-- CDNs -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Prompt:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Prompt', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .font-mono-receipt {
+      font-family: 'Space Mono', monospace, Courier;
+    }
+    @keyframes stampSlam {
+      0% { opacity: 0; transform: scale(2.8) rotate(-25deg); }
+      70% { opacity: 0.95; transform: scale(0.92) rotate(12deg); }
+      85% { transform: scale(1.04) rotate(9deg); }
+      100% { opacity: 0.75; transform: scale(1) rotate(10deg); }
+    }
+    .animate-stamp-slam {
+      animation: stampSlam 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #10b981;
+      cursor: pointer;
+      -webkit-appearance: none;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #10b981;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-emerald-500 selection:text-slate-950 pb-28">
+
+  <!-- Main Container constrained to mobile / tablet width -->
+  <div class="max-w-md md:max-w-xl mx-auto min-h-screen flex flex-col relative border-x border-slate-800 shadow-2xl bg-slate-900/60">
+    
+    <!-- Top Header -->
+    <header class="bg-slate-900/95 backdrop-blur-md border-b border-slate-800 sticky top-0 z-20 px-4 py-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-emerald-500/20 active:scale-95 transition-transform cursor-pointer">
+            <span class="text-lg">⚡</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="font-bold text-base tracking-tight text-white">FairDorm Pro</span>
+              <span class="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded-full">Interactive Multi-Mate</span>
+            </div>
+            <p class="text-[11px] text-slate-400">หารค่าไฟหอตามใช้จริง 25:75 ไม่หารเท่า</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1">
+          <!-- Audio Toggle -->
+          <button id="btn-audio-toggle" onclick="toggleAudio()" title="เปิด/ปิดเสียง" class="w-8 h-8 rounded-lg flex items-center justify-center text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 active:scale-90">
+            <span id="audio-icon">🔊</span>
+          </button>
+          <!-- Reset button -->
+          <button id="btn-reset" title="รีเซ็ตค่าเริ่มต้น" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 active:scale-90">
+            ↺
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="flex-1 p-4 space-y-4">
+      
+      <!-- 1. Global Bill Card -->
+      <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-3.5 shadow-sm">
+        <div class="flex items-center justify-between text-xs text-slate-400">
+          <span class="font-bold text-slate-200">🏠 ข้อมูลบิลค่าไฟหอพัก</span>
+          <div class="flex gap-2 text-[11px]">
+            <input id="input-room" type="text" value="402" placeholder="ห้อง" class="w-14 px-1.5 py-0.5 bg-slate-950 border border-slate-700 rounded text-center text-white focus:outline-none focus:border-emerald-500" />
+            <input id="input-month" type="text" value="ก.ย. 69" placeholder="รอบบิล" class="w-20 px-1.5 py-0.5 bg-slate-950 border border-slate-700 rounded text-center text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+        </div>
+
+        <!-- Total Bill Input with Quick presets -->
+        <div class="space-y-1.5">
+          <label class="text-xs text-slate-300 font-medium flex items-center justify-between">
+            <span>ยอดบิลค่าไฟรวมทั้งห้อง (บาท):</span>
+            <span id="bill-formatted-badge" class="text-xs font-mono font-bold text-emerald-400">฿2,400</span>
+          </label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">฿</span>
+            <input id="input-total-bill" type="number" value="2400" min="0" step="50" class="w-full pl-8 pr-4 py-2 bg-slate-950 border border-slate-700 rounded-xl text-lg font-mono font-bold text-white focus:outline-none focus:border-emerald-500" />
+          </div>
+          <!-- Quick presets -->
+          <div class="flex gap-1.5 pt-1 overflow-x-auto pb-0.5">
+            <button onclick="setBill(1500)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] rounded-lg text-slate-300 border border-slate-700 active:scale-95">1,500</button>
+            <button onclick="setBill(2000)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] rounded-lg text-slate-300 border border-slate-700 active:scale-95">2,000</button>
+            <button onclick="setBill(2400)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] rounded-lg text-slate-300 border border-slate-700 active:scale-95">2,400</button>
+            <button onclick="setBill(3000)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] rounded-lg text-slate-300 border border-slate-700 active:scale-95">3,000</button>
+            <button onclick="setBill(3500)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] rounded-lg text-slate-300 border border-slate-700 active:scale-95">3,500</button>
+            <button onclick="setBill(4000)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-[10px] rounded-lg text-slate-300 border border-slate-700 active:scale-95">4,000</button>
+          </div>
+        </div>
+
+        <!-- AC BTU Selector -->
+        <div class="space-y-1.5 pt-1 border-t border-slate-800">
+          <div class="flex justify-between items-center text-xs">
+            <span class="text-slate-300 font-medium">ขนาดแอร์ของห้อง (BTU):</span>
+            <span id="btu-desc" class="text-[10px] text-slate-400 font-mono">12,000 BTU (x1.0)</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <button id="btu-btn-9000" onclick="setBTU(9000)" class="p-2 rounded-xl border border-slate-700 bg-slate-900/60 text-center transition-all active:scale-95">
+              <div class="text-xs font-bold text-white">9,000 BTU</div>
+              <div class="text-[9px] text-slate-400">ห้องเล็ก (~12 ตร.ม.)</div>
+            </button>
+            <button id="btu-btn-12000" onclick="setBTU(12000)" class="p-2 rounded-xl border border-emerald-500 bg-emerald-500/10 text-center ring-1 ring-emerald-500 transition-all active:scale-95">
+              <div class="text-xs font-bold text-emerald-400">12,000 BTU</div>
+              <div class="text-[9px] text-slate-400">มาตรฐาน (~16 ตร.ม.)</div>
+            </button>
+            <button id="btu-btn-18000" onclick="setBTU(18000)" class="p-2 rounded-xl border border-slate-700 bg-slate-900/60 text-center transition-all active:scale-95">
+              <div class="text-xs font-bold text-white">18,000 BTU</div>
+              <div class="text-[9px] text-slate-400">ห้องใหญ่ (~24 ตร.ม.)</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 25:75 Principle Pill -->
+        <div class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-300 flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <span class="text-emerald-400">⚖️</span>
+            <span>กองกลาง <strong>25%</strong> (ตู้เย็น/ไฟ/เน็ต)</span>
+          </div>
+          <div class="text-slate-500 font-mono">+</div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-cyan-400">⚡</span>
+            <span>คิดตามจริง <strong>75%</strong> (แอร์ & อุปกรณ์)</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Roommates Behavior Configuration -->
+      <section class="space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+            <span>👥 พฤติกรรมการใช้ไฟของรูมเมท</span>
+            <span id="roommate-count-badge" class="bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded text-[10px] border border-slate-700">2 คน (สูงสุด 10 คน)</span>
+          </h2>
+          <button id="btn-add-roommate" onclick="addRoommate()" class="text-xs font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 px-2.5 py-1 rounded-lg flex items-center gap-1 active:scale-95 transition-all">
+            <span>+ เพิ่มรูมเมท</span>
+          </button>
+        </div>
+
+        <!-- Roommates List Container -->
+        <div id="roommates-container" class="space-y-3">
+          <!-- Dynamically populated via render() -->
+        </div>
+      </section>
+
+      <!-- 3. Explicit Calculate Bill Button Section -->
+      <section class="pt-2">
+        <button id="btn-calculate-bill" onclick="triggerCalculateAction()" class="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-black text-sm flex flex-col items-center justify-center gap-0.5 shadow-xl shadow-emerald-500/20 active:scale-[0.98] transition-all cursor-pointer">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">⚡</span>
+            <span id="btn-calc-text">กดคำนวณบิลค่าไฟ (Calculate Bill)</span>
+          </div>
+          <span id="btn-calc-subtext" class="text-[10px] text-slate-900/80 font-normal">💡 ปรับแต่งข้อมูลให้ครบถ้วน แล้วแตะปุ่มเพื่อคำนวณบิลยุติธรรม</span>
+        </button>
+      </section>
+
+      <!-- Results Placeholder (Shown before first calculation) -->
+      <div id="results-placeholder" class="bg-slate-900/40 border border-dashed border-slate-800 rounded-2xl p-6 text-center space-y-2">
+        <div class="w-12 h-12 rounded-2xl bg-slate-800/80 border border-slate-700/80 flex items-center justify-center text-2xl mx-auto shadow-inner">
+          📊
+        </div>
+        <h3 class="text-sm font-bold text-slate-300">ยังไม่ได้คำนวณบิลค่าไฟ</h3>
+        <p class="text-xs text-slate-400 max-w-xs mx-auto">
+          ระบุชั่วโมงเปิดแอร์ อุณหภูมิ และเครื่องใช้ไฟฟ้าของแต่ละคน แล้วกดปุ่ม <strong>"กดคำนวณบิลค่าไฟ"</strong> ด้านบนเพื่อดูยอดเงิน
+        </p>
+      </div>
+
+      <!-- 4. Live Share Results Section (Hidden until calculated) -->
+      <section id="results-section" class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-md hidden">
+        <!-- Stale Data Notice -->
+        <div id="results-stale-notice" class="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 flex items-center justify-between hidden">
+          <div class="flex items-center gap-1.5">
+            <span>⚠️</span>
+            <span>มีการแก้ไขข้อมูล แตะปุ่มด้านล่างเพื่ออัปเดตสัดส่วน</span>
+          </div>
+          <button onclick="triggerCalculateAction()" class="px-2 py-0.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-lg text-[10px] active:scale-95">คำนวณใหม่</button>
+        </div>
+
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-bold text-slate-200">📊 สัดส่วนค่าไฟที่ต้องจ่ายจริง</span>
+          <span id="equal-reference-text" class="text-[11px] text-slate-400">หากหารเท่า: คนละ ฿1,200</span>
+        </div>
+
+        <!-- Multi-segment Proportional Progress Bar -->
+        <div id="share-progress-bar" class="h-8 w-full bg-slate-900 rounded-xl overflow-hidden flex p-1 gap-1 border border-slate-700">
+          <!-- Dynamically filled segments -->
+        </div>
+
+        <!-- Summary Cards Grid -->
+        <div id="summary-cards-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 pt-1">
+          <!-- Cards injected by JS -->
+        </div>
+      </section>
+    </main>
+
+    <!-- Pinned Floating Bottom Bar -->
+    <div class="fixed bottom-0 left-0 right-0 p-3 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 z-20">
+      <div class="max-w-md md:max-w-xl mx-auto">
+        <button onclick="openReceiptModal()" class="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+          <span>⚡ ออกใบเสร็จคิดเงินเมท (Generate Slip)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 4. Thermal Paper Receipt Modal & 3D Stamp -->
+    <div id="receipt-modal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/80 backdrop-blur-sm hidden">
+      <div class="fixed inset-0" onclick="closeReceiptModal()"></div>
+      <div class="relative z-10 w-full max-w-sm bg-slate-900 rounded-t-3xl sm:rounded-3xl border border-slate-700 shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+        
+        <!-- Sheet Handle -->
+        <div class="pt-3 pb-1">
+          <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto"></div>
+        </div>
+
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between px-5 py-2.5 border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">🧾</span>
+            <div>
+              <h3 class="text-sm font-bold text-white">ใบเสร็จสลิปค่าไฟหอพัก</h3>
+              <p class="text-[10px] text-slate-400">Fair-Certified พร้อมส่งกลุ่ม LINE</p>
+            </div>
+          </div>
+          <button onclick="closeReceiptModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 active:scale-95">✕</button>
+        </div>
+
+        <!-- Receipt Printable Area -->
+        <div class="p-4 sm:p-5 overflow-y-auto space-y-4">
+          <div id="printable-receipt" class="bg-[#fffdf9] text-slate-900 p-5 sm:p-6 rounded-2xl relative shadow-xl font-mono-receipt border border-slate-300/80 overflow-hidden">
+            
+            <!-- 3D Certified Verification Stamp (Angle-offset in top right so it never blocks numbers or names) -->
+            <div id="receipt-stamp" onclick="playStampSound()" class="absolute top-3 right-3 sm:top-4 sm:right-4 pointer-events-auto cursor-pointer z-20 hidden rotate-[10deg] hover:rotate-[5deg] transition-all select-none" title="คลิกเพื่อปั๊มซ้ำ">
+              <div class="border-2 border-red-600/75 rounded-xl px-2.5 py-1 text-center text-red-600 font-black tracking-wider uppercase shadow-sm bg-red-100/40 backdrop-blur-2xs animate-stamp-slam opacity-70 hover:opacity-95 transition-opacity">
+                <div class="text-[11px] sm:text-xs leading-tight font-black">FAIR-CERTIFIED</div>
+                <div class="text-[8px] tracking-normal font-bold text-red-700">★ ยุติธรรม • ห้ามต่อยกัน ★</div>
+              </div>
+            </div>
+
+            <!-- Receipt Header -->
+            <div class="text-center pb-3 border-b-2 border-dashed border-slate-300">
+              <div class="text-base font-black tracking-wider text-slate-950">⚡ FAIRDORM PRO ⚡</div>
+              <div class="text-[11px] text-slate-600 mt-0.5">ใบแจ้งหนี้ค่าไฟรายบุคคลตามจริง</div>
+              <div id="receipt-meta" class="text-[10px] text-slate-500 mt-1">ห้อง 402 • รอบบิล ก.ย. 69</div>
+            </div>
+
+            <!-- Receipt Breakdown -->
+            <div class="py-2.5 border-b-2 border-dashed border-slate-300 space-y-1 text-xs">
+              <div class="flex justify-between items-center font-bold text-slate-900 pb-0.5">
+                <span>ยอดรวมบิลทั้งห้อง:</span>
+                <span id="receipt-total-bill" class="text-sm font-black tabular-nums">฿2,400</span>
+              </div>
+              <div class="text-[10px] text-slate-600 flex justify-between items-center">
+                <span>• กองกลาง 25% (หารเท่า <span id="receipt-mate-count">2</span> คน):</span>
+                <span id="receipt-base-fee" class="tabular-nums font-semibold">฿600</span>
+              </div>
+              <div class="text-[10px] text-slate-600 flex justify-between items-center">
+                <span>• แอร์ & เครื่องใช้ 75% (คิดตามจริง):</span>
+                <span id="receipt-var-fee" class="tabular-nums font-semibold">฿1,800</span>
+              </div>
+            </div>
+
+            <!-- Per Person Breakdown -->
+            <div id="receipt-roommates-list" class="py-3 space-y-2 border-b-2 border-dashed border-slate-300 text-xs">
+              <!-- Dynamically populated -->
+            </div>
+
+            <!-- PromptPay note -->
+            <div class="pt-3 text-center text-[10px] text-slate-500 space-y-0.5">
+              <div>คำนวณยุติธรรมด้วย FairDorm Pro</div>
+              <div class="font-bold text-slate-700">รักษาความสงบสุขและมิตรภาพของรูมเมท 🤝</div>
+            </div>
+          </div>
+
+          <!-- PromptPay quick input -->
+          <div class="bg-slate-800 rounded-xl p-3 border border-slate-700/80">
+            <label class="text-[11px] font-bold text-slate-300 block mb-1">💳 เบอร์พร้อมเพย์รับเงินโอน (ถ้ามี)</label>
+            <input id="receipt-promptpay" type="text" placeholder="เช่น 0812345678 หรือ เลขที่บัญชี" class="w-full px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500" />
+          </div>
+
+          <!-- LINE text box -->
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 mb-1">ตัวอย่างข้อความสำหรับส่งเข้ากลุ่ม LINE:</div>
+            <pre id="line-preview-text" class="p-3 bg-slate-950 text-slate-300 rounded-xl text-xs font-mono whitespace-pre-wrap leading-relaxed border border-slate-800 select-all max-h-32 overflow-y-auto"></pre>
+          </div>
+        </div>
+
+        <!-- Receipt Actions -->
+        <div class="p-4 bg-slate-900 border-t border-slate-800 flex gap-2">
+          <button onclick="copyLineSummary()" class="flex-1 py-3 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all">
+            <span>📋 คัดลอกสรุปข้อความลง LINE</span>
+          </button>
+          <button onclick="downloadReceiptImage()" class="py-3 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 active:scale-95 transition-all border border-slate-700">
+            <span>📸 บันทึกเป็นรูปภาพ</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-emerald-500 text-slate-950 px-4 py-2 rounded-xl font-bold text-xs shadow-xl flex items-center gap-2 transform -translate-y-20 transition-all duration-300 pointer-events-none opacity-0">
+      <span>✅</span>
+      <span id="toast-message">คัดลอกสรุปข้อความแล้ว!</span>
+    </div>
+
+  </div>
+
+  <!-- Vanilla JavaScript Logic & Audio Synthesizer -->
+  <script>
+    let audioEnabled = true;
+    let audioCtx = null;
+
+    function getAudioCtx() {
+      if (!audioCtx && (window.AudioContext || window.webkitAudioContext)) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioCtx;
+    }
+
+    function toggleAudio() {
+      audioEnabled = !audioEnabled;
+      document.getElementById('audio-icon').innerText = audioEnabled ? '🔊' : '🔇';
+      showToast(audioEnabled ? 'เปิดเสียงเอฟเฟกต์แล้ว 🔊' : 'ปิดเสียงเอฟเฟกต์ 🔇');
+    }
+
+    function playTick(freq = 600) {
+      if (!audioEnabled) return;
+      try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') ctx.resume();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0.04, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.05);
+      } catch (e) {}
+    }
+
+    function playCashSound() {
+      if (!audioEnabled) return;
+      try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') ctx.resume();
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.07);
+          gain.gain.setValueAtTime(0.06, ctx.currentTime + idx * 0.07);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.07 + 0.2);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + idx * 0.07);
+          osc.stop(ctx.currentTime + idx * 0.07 + 0.2);
+        });
+      } catch (e) {}
+    }
+
+    function playStampSound() {
+      if (!audioEnabled) return;
+      try {
+        const ctx = getAudioCtx();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') ctx.resume();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(140, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.15);
+      } catch (e) {}
+    }
+
+    // Application State
+    const STATE = {
+      totalBill: 2400,
+      selectedBTU: 12000,
+      btuMultiplier: 1.0,
+      hasCalculated: false,
+      isStale: false,
+      addingCustomFor: null,
+      roommates: [
+        {
+          id: 'm1',
+          name: 'ฉัน (เมท 1)',
+          color: 'emerald',
+          hex: '#10b981',
+          hours: 10,
+          temp: 23,
+          appliances: { gaming_pc: true, cooking_pot: false, hair_dryer: false, iron: false },
+          appDurations: { gaming_pc: 360, cooking_pot: 30, hair_dryer: 15, iron: 15 },
+          customAppliances: []
+        },
+        {
+          id: 'm2',
+          name: 'เมท 2',
+          color: 'cyan',
+          hex: '#06b6d4',
+          hours: 4,
+          temp: 25,
+          appliances: { gaming_pc: false, cooking_pot: true, hair_dryer: false, iron: false },
+          appDurations: { gaming_pc: 360, cooking_pot: 30, hair_dryer: 15, iron: 15 },
+          customAppliances: []
+        }
+      ]
+    };
+
+    const COLOR_PRESETS = [
+      { name: 'emerald', hex: '#10b981' },
+      { name: 'cyan', hex: '#06b6d4' },
+      { name: 'violet', hex: '#8b5cf6' },
+      { name: 'amber', hex: '#f59e0b' },
+      { name: 'rose', hex: '#f43f5e' },
+      { name: 'blue', hex: '#3b82f6' },
+      { name: 'orange', hex: '#f97316' },
+      { name: 'lime', hex: '#84cc16' },
+      { name: 'fuchsia', hex: '#d946ef' },
+      { name: 'teal', hex: '#14b8a6' }
+    ];
+
+    const CUSTOM_PRESET_TEMPLATES = [
+      { name: 'ตู้เย็นส่วนตัว', emoji: '🧊', watts: 60, durationMin: 1440, label: '60W • 24ชม.' },
+      { name: 'พัดลมตั้งโต๊ะ', emoji: '💨', watts: 45, durationMin: 480, label: '45W • 8ชม.' },
+      { name: 'หม้อหุงข้าว', emoji: '🍚', watts: 400, durationMin: 30, label: '400W • 30น.' },
+      { name: 'PS5 คอนโซล', emoji: '🎮', watts: 200, durationMin: 240, label: '200W • 4ชม.' },
+      { name: 'กาน้ำร้อนไฟฟ้า', emoji: '♨️', watts: 1500, durationMin: 10, label: '1.5kW • 10น.' }
+    ];
+
+    function getTempMultiplier(temp) {
+      if (temp <= 20) return { mult: 1.25, badge: '[กินไฟโหด +25%]', color: 'text-red-400 bg-red-500/10 border-red-500/30' };
+      if (temp <= 22) return { mult: 1.20, badge: '[กินไฟโหด +20%]', color: 'text-red-400 bg-red-500/10 border-red-500/30' };
+      if (temp <= 24) return { mult: 1.08, badge: '[เย็นฉ่ำ +8%]', color: 'text-amber-400 bg-amber-500/10 border-amber-500/30' };
+      if (temp <= 26) return { mult: 1.00, badge: '[Eco-Mode 0%]', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' };
+      return { mult: 0.90, badge: '[ประหยัดไฟ -10%]', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30' };
+    }
+
+    function calculate() {
+      const total = Math.max(0, STATE.totalBill);
+      const n = STATE.roommates.length || 1;
+      const baseCost = Math.round(total * 0.25);
+      const basePerPerson = baseCost / n;
+      const varCost = total - baseCost;
+      const acKW = STATE.selectedBTU === 9000 ? 0.85 : STATE.selectedBTU === 12000 ? 1.1 : 1.7;
+
+      const weights = STATE.roommates.map(m => {
+        const tempInfo = getTempMultiplier(m.temp);
+        const acKWh = m.hours * acKW * tempInfo.mult;
+
+        const activeAppliances = [];
+
+        // 1. Preset appliances with usage duration
+        if (m.appliances.gaming_pc) {
+          const mins = (m.appDurations && m.appDurations.gaming_pc) || 360;
+          const kwh = (250 * (mins / 60)) / 1000;
+          activeAppliances.push({
+            id: 'gaming_pc',
+            name: 'คอมเกมมิ่ง PC',
+            emoji: '🖥️',
+            watts: 250,
+            durationMins: mins,
+            durationStr: mins >= 60 ? `${mins / 60}ชม.` : `${mins}น.`,
+            kwh: Math.round(kwh * 100) / 100
+          });
+        }
+        if (m.appliances.cooking_pot) {
+          const mins = (m.appDurations && m.appDurations.cooking_pot) || 30;
+          const kwh = (1200 * (mins / 60)) / 1000;
+          activeAppliances.push({
+            id: 'cooking_pot',
+            name: 'กระทะไฟฟ้า/ชาบู',
+            emoji: '🍳',
+            watts: 1200,
+            durationMins: mins,
+            durationStr: mins >= 60 ? `${mins / 60}ชม.` : `${mins}น.`,
+            kwh: Math.round(kwh * 100) / 100
+          });
+        }
+        if (m.appliances.hair_dryer) {
+          const mins = (m.appDurations && m.appDurations.hair_dryer) || 15;
+          const kwh = (1800 * (mins / 60)) / 1000;
+          activeAppliances.push({
+            id: 'hair_dryer',
+            name: 'ไดร์เป่าผม',
+            emoji: '💨',
+            watts: 1800,
+            durationMins: mins,
+            durationStr: mins >= 60 ? `${mins / 60}ชม.` : `${mins}น.`,
+            kwh: Math.round(kwh * 100) / 100
+          });
+        }
+        if (m.appliances.iron) {
+          const mins = (m.appDurations && m.appDurations.iron) || 15;
+          const kwh = (1000 * (mins / 60)) / 1000;
+          activeAppliances.push({
+            id: 'iron',
+            name: 'เตารีดผ้า',
+            emoji: '👔',
+            watts: 1000,
+            durationMins: mins,
+            durationStr: mins >= 60 ? `${mins / 60}ชม.` : `${mins}น.`,
+            kwh: Math.round(kwh * 100) / 100
+          });
+        }
+
+        // 2. Custom appliances
+        if (m.customAppliances && m.customAppliances.length > 0) {
+          m.customAppliances.forEach(c => {
+            if (c.enabled) {
+              const kwh = (c.watts * (c.durationMin / 60)) / 1000;
+              activeAppliances.push({
+                id: c.id,
+                name: c.name,
+                emoji: c.emoji || '⚡',
+                watts: c.watts,
+                durationMins: c.durationMin,
+                durationStr: c.durationMin >= 60 ? `${c.durationMin / 60}ชม.` : `${c.durationMin}น.`,
+                kwh: Math.round(kwh * 100) / 100,
+                isCustom: true
+              });
+            }
+          });
+        }
+
+        const appKWh = activeAppliances.reduce((sum, a) => sum + a.kwh, 0);
+        const totalKWh = Math.max(0.001, acKWh + appKWh);
+
+        return {
+          id: m.id,
+          acKWh,
+          appKWh,
+          totalKWh,
+          activeAppliances,
+          totalWeight: totalKWh
+        };
+      });
+
+      const sumWeight = weights.reduce((acc, c) => acc + c.totalWeight, 0);
+
+      const shares = STATE.roommates.map((m, idx) => {
+        const proportion = sumWeight > 0 ? weights[idx].totalWeight / sumWeight : 1 / n;
+        const rawVar = varCost * proportion;
+        const totalRaw = basePerPerson + rawVar;
+        return {
+          id: m.id,
+          proportion,
+          totalRaw,
+          totalKWh: weights[idx].totalKWh,
+          acKWh: weights[idx].acKWh,
+          activeAppliances: weights[idx].activeAppliances
+        };
+      });
+
+      let distributed = shares.map(s => Math.floor(s.totalRaw));
+      let diff = total - distributed.reduce((a, b) => a + b, 0);
+      for (let i = 0; i < diff; i++) {
+        distributed[i % distributed.length] += 1;
+      }
+
+      return STATE.roommates.map((m, idx) => {
+        const share = distributed[idx];
+        const pct = total > 0 ? Math.round((share / total) * 100) : Math.round(100 / n);
+        return {
+          ...m,
+          share,
+          percentage: pct,
+          dailyKWh: shares[idx].totalKWh.toFixed(2),
+          acKWh: shares[idx].acKWh.toFixed(2),
+          activeAppliances: shares[idx].activeAppliances,
+          equalDiff: share - Math.round(total / n)
+        };
+      });
+    }
+
+    function triggerCalculateAction() {
+      playCashSound();
+      if (window.confetti) {
+        window.confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+      }
+      STATE.hasCalculated = true;
+      STATE.isStale = false;
+      render();
+      const card = document.getElementById('results-section');
+      if (card) {
+        card.classList.add('ring-2', 'ring-emerald-400', 'scale-[1.01]');
+        setTimeout(() => {
+          card.classList.remove('ring-2', 'ring-emerald-400', 'scale-[1.01]');
+        }, 500);
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+      showToast('คำนวณบิลเรียบร้อย! อัปเดตสัดส่วนยุติธรรมแล้ว ⚡');
+    }
+
+    function render() {
+      const results = calculate();
+      const container = document.getElementById('roommates-container');
+      container.innerHTML = '';
+
+      document.getElementById('roommate-count-badge').innerText = `${STATE.roommates.length} คน (สูงสุด 10 คน)`;
+      document.getElementById('btn-add-roommate').style.display = STATE.roommates.length >= 10 ? 'none' : 'flex';
+      document.getElementById('equal-reference-text').innerText = `หากหารเท่า: คนละ ฿${Math.round(STATE.totalBill / STATE.roommates.length).toLocaleString()}`;
+
+      // Toggle results visibility vs placeholder
+      const placeholder = document.getElementById('results-placeholder');
+      const resultsSection = document.getElementById('results-section');
+      const staleNotice = document.getElementById('results-stale-notice');
+      const btnCalcText = document.getElementById('btn-calc-text');
+      const btnCalcSubtext = document.getElementById('btn-calc-subtext');
+
+      if (!STATE.hasCalculated) {
+        if (placeholder) placeholder.style.display = 'block';
+        if (resultsSection) resultsSection.style.display = 'none';
+        if (btnCalcText) btnCalcText.innerText = '⚡ กดคำนวณบิลค่าไฟ (Calculate Bill)';
+        if (btnCalcSubtext) btnCalcSubtext.innerText = '💡 ตั้งค่าการใช้งานให้เรียบร้อย แล้วแตะปุ่มเพื่อเริ่มคำนวณบิล';
+      } else {
+        if (placeholder) placeholder.style.display = 'none';
+        if (resultsSection) resultsSection.style.display = 'block';
+        if (staleNotice) staleNotice.style.display = STATE.isStale ? 'flex' : 'none';
+        if (btnCalcText) btnCalcText.innerText = STATE.isStale ? '⚡ มีข้อมูลเปลี่ยน • กดคำนวณใหม่' : '⚡ คำนวณบิลเรียบร้อยแล้ว (กดเพื่อคำนวณใหม่)';
+        if (btnCalcSubtext) btnCalcSubtext.innerText = STATE.isStale ? '⚠️ ข้อมูลเปลี่ยน แตะเพื่ออัปเดตสัดส่วนใหม่' : '✅ สัดส่วนค่าไฟอัปเดตตรงตามการใช้งานล่าสุดแล้ว';
+      }
+
+      STATE.roommates.forEach((m, idx) => {
+        const res = results[idx];
+        const tempInfo = getTempMultiplier(m.temp);
+        const card = document.createElement('div');
+        card.className = 'bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 space-y-3.5 relative transition-all shadow-sm';
+        
+        const shareBadgeHtml = STATE.hasCalculated
+          ? `<span class="text-xs font-bold px-2 py-0.5 rounded-full ${STATE.isStale ? 'border border-dashed' : ''}" style="color: ${m.hex}; background-color: ${m.hex}22;">${res.percentage}% (฿${res.share.toLocaleString()})${STATE.isStale ? ' ↺' : ''}</span>`
+          : `<span class="text-[10px] font-semibold text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700/60">รอคำนวณ</span>`;
+
+        // Durations for presets
+        const pcMins = (m.appDurations && m.appDurations.gaming_pc) || 360;
+        const potMins = (m.appDurations && m.appDurations.cooking_pot) || 30;
+        const dryerMins = (m.appDurations && m.appDurations.hair_dryer) || 15;
+        const ironMins = (m.appDurations && m.appDurations.iron) || 15;
+
+        // Custom appliances list HTML
+        let customListHtml = '';
+        if (m.customAppliances && m.customAppliances.length > 0) {
+          const items = m.customAppliances.map(c => {
+            const dailyKWh = ((c.watts * (c.durationMin / 60)) / 1000).toFixed(2);
+            const durStr = c.durationMin >= 60 ? `${c.durationMin / 60} ชม./วัน` : `${c.durationMin} นาที/วัน`;
+            return `
+              <div class="p-2 rounded-xl border flex items-center justify-between text-xs transition-all ${c.enabled ? 'bg-slate-900/90 border-cyan-500/60 ring-1 ring-cyan-500/30' : 'bg-slate-900/50 border-slate-800 text-slate-500 opacity-60'}">
+                <button type="button" onclick="toggleCustomAppliance('${m.id}', '${c.id}')" class="flex items-center gap-1.5 flex-1 min-w-0 text-left active:scale-95">
+                  <span class="text-sm">${c.emoji || '⚡'}</span>
+                  <div class="min-w-0 flex-1">
+                    <div class="font-bold text-[11px] truncate ${c.enabled ? 'text-white' : 'text-slate-400'}">${c.name}</div>
+                    <div class="text-[9px] font-mono text-slate-400">${c.watts}W • ${durStr}</div>
+                  </div>
+                </button>
+                <div class="flex items-center gap-1.5 shrink-0 pl-1">
+                  ${c.enabled ? `<span class="text-[9px] font-mono text-cyan-300 font-bold bg-cyan-950/80 px-1.5 py-0.5 rounded border border-cyan-800">~${dailyKWh} kWh</span>` : ''}
+                  <button type="button" onclick="removeCustomAppliance('${m.id}', '${c.id}')" title="ลบอุปกรณ์" class="p-1 text-slate-500 hover:text-rose-400 active:scale-90 transition-colors">✕</button>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          customListHtml = `
+            <div class="space-y-1.5 pt-1">
+              <div class="text-[10px] font-bold text-slate-400">อุปกรณ์เพิ่มเติม (${m.customAppliances.length} รายการ):</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">${items}</div>
+            </div>
+          `;
+        }
+
+        // Add custom appliance form
+        const isAddingCustom = STATE.addingCustomFor === m.id;
+        const addCustomHtml = isAddingCustom
+          ? `
+            <div class="bg-slate-900 p-3 rounded-xl border border-cyan-500/50 space-y-2.5 mt-2">
+              <div class="flex items-center justify-between text-xs pb-1 border-b border-slate-800">
+                <span class="font-bold text-cyan-300 flex items-center gap-1">
+                  <span>⚡ เพิ่มเครื่องใช้ไฟฟ้าส่วนตัว</span>
+                </span>
+                <button type="button" onclick="cancelAddCustomForm()" class="text-slate-400 hover:text-white p-0.5">✕</button>
+              </div>
+
+              <!-- Quick Templates -->
+              <div class="space-y-1">
+                <div class="text-[9px] text-slate-400 font-bold">เลือกด่วนตามเครื่องยอดนิยม:</div>
+                <div class="flex flex-wrap gap-1">
+                  ${CUSTOM_PRESET_TEMPLATES.map(t => `
+                    <button type="button" onclick="applyPresetToForm('${m.id}', '${t.name}', '${t.emoji}', ${t.watts}, ${t.durationMin})" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 border border-slate-700 flex items-center gap-1 active:scale-95 transition-all">
+                      <span>${t.emoji}</span>
+                      <span>${t.name} (${t.label})</span>
+                    </button>
+                  `).join('')}
+                </div>
+              </div>
+
+              <!-- Form Inputs -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <div class="sm:col-span-1">
+                  <label class="text-[10px] text-slate-400 block mb-0.5">ชื่ออุปกรณ์:</label>
+                  <input id="custom-name-${m.id}" type="text" placeholder="เช่น ตู้เย็นส่วนตัว, พัดลม" class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500" />
+                  <input id="custom-emoji-${m.id}" type="hidden" value="⚡" />
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-400 block mb-0.5">กำลังวัตต์ (Watts):</label>
+                  <input id="custom-watts-${m.id}" type="number" min="1" max="5000" value="100" oninput="updateCustomPreview('${m.id}')" placeholder="เช่น 60, 400" class="w-full px-2.5 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-cyan-500" />
+                </div>
+                <div>
+                  <label class="text-[10px] text-slate-400 block mb-0.5">เวลาใช้งาน/วัน:</label>
+                  <div class="flex gap-1">
+                    <input id="custom-dur-${m.id}" type="number" step="any" min="0.1" max="24" value="2" oninput="updateCustomPreview('${m.id}')" placeholder="เช่น 2, 30" class="w-full px-2 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-cyan-500" />
+                    <select id="custom-unit-${m.id}" onchange="updateCustomPreview('${m.id}')" class="bg-slate-950 border border-slate-700 rounded-lg text-[11px] text-slate-300 px-1 focus:outline-none">
+                      <option value="hours">ชม./วัน</option>
+                      <option value="minutes">นาที/วัน</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Energy Calculation Preview -->
+              <div class="bg-slate-950/80 p-2 rounded-lg border border-slate-800 text-[10px] flex items-center justify-between text-slate-300">
+                <span>💡 พลังงาน: วัตต์ × เวลา / 1,000</span>
+                <span id="custom-preview-${m.id}" class="font-mono text-cyan-400 font-bold">~0.20 หน่วย/วัน</span>
+              </div>
+
+              <!-- Submit Buttons -->
+              <div class="flex gap-2 justify-end pt-1">
+                <button type="button" onclick="cancelAddCustomForm()" class="px-3 py-1 rounded-lg bg-slate-800 text-slate-400 hover:text-white text-xs">ยกเลิก</button>
+                <button type="button" onclick="saveCustomAppliance('${m.id}')" class="px-3 py-1 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-1 active:scale-95">✓ บันทึกอุปกรณ์</button>
+              </div>
+            </div>
+          `
+          : `
+            <button type="button" onclick="showAddCustomForm('${m.id}')" class="w-full mt-2 py-1.5 px-3 rounded-xl border border-dashed border-slate-700 hover:border-emerald-500/60 text-slate-400 hover:text-emerald-300 bg-slate-900/40 hover:bg-slate-900/80 text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all active:scale-98">
+              <span>+ เพิ่มเครื่องใช้ไฟฟ้าเอง (Custom Appliance)</span>
+            </button>
+          `;
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2 flex-1">
+              <span class="w-3 h-3 rounded-full" style="background-color: ${m.hex};"></span>
+              <input type="text" value="${m.name}" onchange="updateName('${m.id}', this.value)" class="bg-transparent font-bold text-sm text-white focus:outline-none focus:border-b border-emerald-500 w-32" />
+            </div>
+            <div class="flex items-center gap-2">
+              ${shareBadgeHtml}
+              ${STATE.roommates.length > 2 ? `<button onclick="removeRoommate('${m.id}')" class="text-slate-500 hover:text-red-400 text-xs p-1">✕</button>` : ''}
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <div class="flex justify-between text-xs text-slate-300">
+              <span>ชั่วโมงเปิดแอร์:</span>
+              <span class="font-bold text-white"><span class="text-sm font-black" style="color: ${m.hex};">${m.hours}</span> ชม./วัน</span>
+            </div>
+            <input type="range" min="0" max="24" value="${m.hours}" oninput="updateHours('${m.id}', this.value)" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
+            <div class="flex justify-between text-[10px] text-slate-500 font-mono">
+              <span>0h</span><span>8h (นอน)</span><span>16h</span><span>24h</span>
+            </div>
+          </div>
+
+          <div class="space-y-1 pt-1 border-t border-slate-700/50">
+            <div class="flex justify-between text-xs text-slate-300">
+              <span>อุณหภูมิแอร์:</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] font-bold px-1.5 py-0.2 rounded border ${tempInfo.color}">${tempInfo.badge}</span>
+                <span class="font-black text-white">${m.temp}°C</span>
+              </div>
+            </div>
+            <input type="range" min="18" max="28" value="${m.temp}" oninput="updateTemp('${m.id}', this.value)" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer" />
+          </div>
+
+          <!-- Appliances Section with realistic duration logic -->
+          <div class="pt-2 border-t border-slate-700/50 space-y-2">
+            <div class="flex items-center justify-between text-[11px] font-bold text-slate-400">
+              <span>เครื่องใช้ไฟฟ้าส่วนตัว (คิดตาม kWh จริง):</span>
+              <span class="text-[9px] font-mono text-slate-500">W × ชม. / 1,000</span>
+            </div>
+
+            <!-- Preset Buttons -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">
+              <button onclick="toggleAppliance('${m.id}', 'gaming_pc')" class="p-2 rounded-xl border text-center transition-all active:scale-95 ${m.appliances.gaming_pc ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300 ring-1 ring-indigo-500' : 'bg-slate-900/60 border-slate-700 text-slate-400'}">
+                <div class="text-xs font-bold">🖥️ PC</div>
+                <div class="text-[9px] mt-0.5 font-mono">250W • ${pcMins >= 60 ? `${pcMins / 60}ชม.` : `${pcMins}น.`}</div>
+                ${m.appliances.gaming_pc ? `<div class="text-[8.5px] font-mono text-indigo-400 font-bold mt-0.5">~${((250 * pcMins / 60) / 1000).toFixed(2)} kWh</div>` : ''}
+              </button>
+              <button onclick="toggleAppliance('${m.id}', 'cooking_pot')" class="p-2 rounded-xl border text-center transition-all active:scale-95 ${m.appliances.cooking_pot ? 'bg-amber-500/20 border-amber-500 text-amber-300 ring-1 ring-amber-500' : 'bg-slate-900/60 border-slate-700 text-slate-400'}">
+                <div class="text-xs font-bold">🍳 ชาบู</div>
+                <div class="text-[9px] mt-0.5 font-mono">1.2kW • ${potMins}น.</div>
+                ${m.appliances.cooking_pot ? `<div class="text-[8.5px] font-mono text-amber-400 font-bold mt-0.5">~${((1200 * potMins / 60) / 1000).toFixed(2)} kWh</div>` : ''}
+              </button>
+              <button onclick="toggleAppliance('${m.id}', 'hair_dryer')" class="p-2 rounded-xl border text-center transition-all active:scale-95 ${m.appliances.hair_dryer ? 'bg-pink-500/20 border-pink-500 text-pink-300 ring-1 ring-pink-500' : 'bg-slate-900/60 border-slate-700 text-slate-400'}">
+                <div class="text-xs font-bold">💨 ไดร์ผม</div>
+                <div class="text-[9px] mt-0.5 font-mono">1.8kW • ${dryerMins}น.</div>
+                ${m.appliances.hair_dryer ? `<div class="text-[8.5px] font-mono text-pink-400 font-bold mt-0.5">~${((1800 * dryerMins / 60) / 1000).toFixed(2)} kWh</div>` : ''}
+              </button>
+              <button onclick="toggleAppliance('${m.id}', 'iron')" class="p-2 rounded-xl border text-center transition-all active:scale-95 ${m.appliances.iron ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500' : 'bg-slate-900/60 border-slate-700 text-slate-400'}">
+                <div class="text-xs font-bold">👔 เตารีด</div>
+                <div class="text-[9px] mt-0.5 font-mono">1.0kW • ${ironMins}น.</div>
+                ${m.appliances.iron ? `<div class="text-[8.5px] font-mono text-emerald-400 font-bold mt-0.5">~${((1000 * ironMins / 60) / 1000).toFixed(2)} kWh</div>` : ''}
+              </button>
+            </div>
+
+            <!-- Duration Selector for active presets -->
+            ${(m.appliances.gaming_pc || m.appliances.cooking_pot || m.appliances.hair_dryer || m.appliances.iron) ? `
+              <div class="bg-slate-900/90 rounded-xl p-2 border border-slate-700/70 space-y-1.5 text-xs">
+                <div class="text-[9.5px] font-bold text-slate-400">⏱️ ปรับเวลาใช้งานจริง (ช่วยให้คิดค่าไฟแฟร์ตามจริง):</div>
+                
+                ${m.appliances.hair_dryer ? `
+                  <div class="flex items-center justify-between text-[10px] bg-slate-800/80 px-2 py-1 rounded-lg">
+                    <span class="text-slate-300 font-medium">💨 ไดร์เป่าผม (1,800W):</span>
+                    <div class="flex items-center gap-1">
+                      ${[5, 10, 15, 25].map(min => `
+                        <button type="button" onclick="updateAppDuration('${m.id}', 'hair_dryer', ${min})" class="px-1.5 py-0.5 rounded text-[9px] font-bold font-mono transition-all ${dryerMins === min ? 'bg-pink-500 text-white' : 'bg-slate-700 text-slate-300'}">${min}น.</button>
+                      `).join('')}
+                      <span class="text-[8.5px] font-mono text-pink-300 pl-1 font-bold">~${((1800 * dryerMins / 60) / 1000).toFixed(2)} kWh</span>
+                    </div>
+                  </div>
+                ` : ''}
+
+                ${m.appliances.iron ? `
+                  <div class="flex items-center justify-between text-[10px] bg-slate-800/80 px-2 py-1 rounded-lg">
+                    <span class="text-slate-300 font-medium">👔 เตารีดผ้า (1,000W):</span>
+                    <div class="flex items-center gap-1">
+                      ${[5, 10, 15, 25, 30].map(min => `
+                        <button type="button" onclick="updateAppDuration('${m.id}', 'iron', ${min})" class="px-1.5 py-0.5 rounded text-[9px] font-bold font-mono transition-all ${ironMins === min ? 'bg-emerald-500 text-slate-950 font-black' : 'bg-slate-700 text-slate-300'}">${min}น.</button>
+                      `).join('')}
+                      <span class="text-[8.5px] font-mono text-emerald-300 pl-1 font-bold">~${((1000 * ironMins / 60) / 1000).toFixed(2)} kWh</span>
+                    </div>
+                  </div>
+                ` : ''}
+
+                ${m.appliances.gaming_pc ? `
+                  <div class="flex items-center justify-between text-[10px] bg-slate-800/80 px-2 py-1 rounded-lg">
+                    <span class="text-slate-300 font-medium">🖥️ คอมเกมมิ่ง PC (250W):</span>
+                    <div class="flex items-center gap-1">
+                      ${[{ h: 3, m: 180 }, { h: 6, m: 360 }, { h: 8, m: 480 }, { h: 12, m: 720 }].map(opt => `
+                        <button type="button" onclick="updateAppDuration('${m.id}', 'gaming_pc', ${opt.m})" class="px-1.5 py-0.5 rounded text-[9px] font-bold font-mono transition-all ${pcMins === opt.m ? 'bg-indigo-500 text-white' : 'bg-slate-700 text-slate-300'}">${opt.h}ชม.</button>
+                      `).join('')}
+                      <span class="text-[8.5px] font-mono text-indigo-300 pl-1 font-bold">~${((250 * pcMins / 60) / 1000).toFixed(2)} kWh</span>
+                    </div>
+                  </div>
+                ` : ''}
+
+                ${m.appliances.cooking_pot ? `
+                  <div class="flex items-center justify-between text-[10px] bg-slate-800/80 px-2 py-1 rounded-lg">
+                    <span class="text-slate-300 font-medium">🍳 กระทะชาบู (1,200W):</span>
+                    <div class="flex items-center gap-1">
+                      ${[15, 30, 45, 60].map(min => `
+                        <button type="button" onclick="updateAppDuration('${m.id}', 'cooking_pot', ${min})" class="px-1.5 py-0.5 rounded text-[9px] font-bold font-mono transition-all ${potMins === min ? 'bg-amber-500 text-white' : 'bg-slate-700 text-slate-300'}">${min}น.</button>
+                      `).join('')}
+                      <span class="text-[8.5px] font-mono text-amber-300 pl-1 font-bold">~${((1200 * potMins / 60) / 1000).toFixed(2)} kWh</span>
+                    </div>
+                  </div>
+                ` : ''}
+              </div>
+            ` : ''}
+
+            <!-- Custom Appliances List & Add Button -->
+            ${customListHtml}
+            ${addCustomHtml}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      const bar = document.getElementById('share-progress-bar');
+      bar.innerHTML = '';
+      results.forEach(m => {
+        const seg = document.createElement('div');
+        seg.style.flex = `${Math.max(1.5, m.percentage)} 1 0%`;
+        seg.style.minWidth = '24px';
+        seg.style.backgroundColor = m.hex;
+        seg.className = 'h-full rounded-md sm:rounded-lg transition-all duration-300 flex items-center justify-center sm:justify-between px-1 sm:px-2 text-slate-950 font-bold text-xs overflow-hidden select-none';
+        seg.title = `${m.name}: ${m.percentage}% (฿${m.share.toLocaleString()})`;
+        const nameHtml = STATE.roommates.length <= 5 || m.percentage >= 9 ? `<span class="truncate max-w-[50px] hidden xs:inline sm:inline">${m.name}</span>` : '';
+        seg.innerHTML = `${nameHtml}<span class="font-mono text-[10px] sm:text-xs">${m.percentage}%</span>`;
+        bar.appendChild(seg);
+      });
+
+      const grid = document.getElementById('summary-cards-grid');
+      grid.innerHTML = '';
+      results.forEach(m => {
+        const c = document.createElement('div');
+        c.className = 'bg-slate-900/90 border border-slate-700/80 rounded-xl p-3 flex flex-col justify-between';
+        c.innerHTML = `
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-bold truncate text-white" style="color: ${m.hex};">${m.name}</span>
+            <span class="text-[10px] text-slate-400">${m.percentage}%</span>
+          </div>
+          <div class="text-xl font-black text-white mt-1 tabular-nums">฿${m.share.toLocaleString()}</div>
+          <div class="text-[10px] font-bold mt-1 ${m.equalDiff < 0 ? 'text-emerald-400' : m.equalDiff > 0 ? 'text-amber-400' : 'text-slate-400'}">
+            ${m.equalDiff < 0 ? `ประหยัด ฿${Math.abs(m.equalDiff).toLocaleString()}` : m.equalDiff > 0 ? `จ่ายเพิ่ม ฿${m.equalDiff.toLocaleString()}` : 'เท่ากับหารเฉลี่ย'}
+          </div>
+        `;
+        grid.appendChild(c);
+      });
+    }
+
+    function setBill(amount) {
+      playTick(600);
+      STATE.totalBill = amount;
+      document.getElementById('input-total-bill').value = amount;
+      if (STATE.hasCalculated) STATE.isStale = true;
+      render();
+    }
+
+    function setBTU(btu) {
+      playTick(800);
+      STATE.selectedBTU = btu;
+      STATE.btuMultiplier = btu === 9000 ? 0.85 : btu === 12000 ? 1.0 : 1.45;
+      [9000, 12000, 18000].forEach(b => {
+        const btn = document.getElementById(`btu-btn-${b}`);
+        if (b === btu) {
+          btn.className = 'p-2 rounded-xl border border-emerald-500 bg-emerald-500/10 text-center ring-1 ring-emerald-500 transition-all active:scale-95';
+        } else {
+          btn.className = 'p-2 rounded-xl border border-slate-700 bg-slate-900/60 text-center transition-all active:scale-95';
+        }
+      });
+      document.getElementById('btu-desc').innerText = `${btu.toLocaleString()} BTU (x${STATE.btuMultiplier})`;
+      if (STATE.hasCalculated) STATE.isStale = true;
+      render();
+    }
+
+    function addRoommate() {
+      if (STATE.roommates.length >= 10) return;
+      playTick(750);
+      const idx = STATE.roommates.length;
+      const color = COLOR_PRESETS[idx % COLOR_PRESETS.length];
+      STATE.roommates.push({
+        id: 'm_' + Date.now(),
+        name: `เมท ${idx + 1}`,
+        color: color.name,
+        hex: color.hex,
+        hours: 6,
+        temp: 25,
+        appliances: { gaming_pc: false, cooking_pot: false, hair_dryer: false, iron: false },
+        appDurations: { gaming_pc: 360, cooking_pot: 30, hair_dryer: 15, iron: 15 },
+        customAppliances: []
+      });
+      if (STATE.hasCalculated) STATE.isStale = true;
+      render();
+    }
+
+    function removeRoommate(id) {
+      if (STATE.roommates.length <= 2) return;
+      playTick(400);
+      STATE.roommates = STATE.roommates.filter(m => m.id !== id);
+      if (STATE.hasCalculated) STATE.isStale = true;
+      render();
+    }
+
+    function updateName(id, val) {
+      const m = STATE.roommates.find(x => x.id === id);
+      if (m) m.name = val.trim() || 'เมท';
+      render();
+    }
+
+    function updateHours(id, val) {
+      playTick(400 + parseInt(val) * 15);
+      const m = STATE.roommates.find(x => x.id === id);
+      if (m) m.hours = parseInt(val, 10);
+      if (STATE.hasCalculated) STATE.isStale = true;
+      render();
+    }
+
+    function updateTemp(id, val) {
+      playTick(350 + (28 - parseInt(val)) * 25);
+      const m = STATE.roommates.find(x => x.id === id);
+      if (m) m.temp = parseInt(val, 10);
+      if (STATE.hasCalculated) STATE.isStale = true;
+      render();
+    }
+
+    function toggleAppliance(id, app) {
+      playTick(900);
+      const m = STATE.roommates.find(x => x.id === id);
+      if (m) m.appliances[app] = !m.appliances[app];
+      if (STATE.hasCalculated) STATE.isStale = true;
+      render();
+    }
+
+    function updateAppDuration(mateId, appKey, mins) {
+      playTick(600);
+      const m = STATE.roommates.find(x => x.id === mateId);
+      if (m) {
+        if (!m.appDurations) m.appDurations = { gaming_pc: 360, cooking_pot: 30, hair_dryer: 15 };
+        m.appDurations[appKey] = mins;
+        if (STATE.hasCalculated) STATE.isStale = true;
+        render();
+      }
+    }
+
+    function toggleCustomAppliance(mateId, customId) {
+      playTick(700);
+      const m = STATE.roommates.find(x => x.id === mateId);
+      if (m && m.customAppliances) {
+        const item = m.customAppliances.find(c => c.id === customId);
+        if (item) {
+          item.enabled = !item.enabled;
+          if (STATE.hasCalculated) STATE.isStale = true;
+          render();
+        }
+      }
+    }
+
+    function removeCustomAppliance(mateId, customId) {
+      playTick(400);
+      const m = STATE.roommates.find(x => x.id === mateId);
+      if (m && m.customAppliances) {
+        m.customAppliances = m.customAppliances.filter(c => c.id !== customId);
+        if (STATE.hasCalculated) STATE.isStale = true;
+        render();
+      }
+    }
+
+    function showAddCustomForm(mateId) {
+      playTick(750);
+      STATE.addingCustomFor = mateId;
+      render();
+    }
+
+    function cancelAddCustomForm() {
+      STATE.addingCustomFor = null;
+      render();
+    }
+
+    function applyPresetToForm(mateId, name, emoji, watts, durationMin) {
+      playTick(800);
+      const nameInput = document.getElementById('custom-name-' + mateId);
+      const wattsInput = document.getElementById('custom-watts-' + mateId);
+      const durInput = document.getElementById('custom-dur-' + mateId);
+      const unitSelect = document.getElementById('custom-unit-' + mateId);
+      const emojiInput = document.getElementById('custom-emoji-' + mateId);
+
+      if (nameInput) nameInput.value = name;
+      if (wattsInput) wattsInput.value = watts;
+      if (emojiInput) emojiInput.value = emoji;
+      if (durationMin >= 60) {
+        if (durInput) durInput.value = durationMin / 60;
+        if (unitSelect) unitSelect.value = 'hours';
+      } else {
+        if (durInput) durInput.value = durationMin;
+        if (unitSelect) unitSelect.value = 'minutes';
+      }
+      updateCustomPreview(mateId);
+    }
+
+    function updateCustomPreview(mateId) {
+      const wattsInput = document.getElementById('custom-watts-' + mateId);
+      const durInput = document.getElementById('custom-dur-' + mateId);
+      const unitSelect = document.getElementById('custom-unit-' + mateId);
+      const previewSpan = document.getElementById('custom-preview-' + mateId);
+
+      if (wattsInput && durInput && unitSelect && previewSpan) {
+        const w = parseFloat(wattsInput.value) || 0;
+        const dur = parseFloat(durInput.value) || 0;
+        const unit = unitSelect.value;
+        const mins = unit === 'hours' ? dur * 60 : dur;
+        const kwh = (w * (mins / 60)) / 1000;
+        previewSpan.innerText = `~${kwh.toFixed(2)} หน่วย/วัน`;
+      }
+    }
+
+    function saveCustomAppliance(mateId) {
+      const nameInput = document.getElementById('custom-name-' + mateId);
+      const wattsInput = document.getElementById('custom-watts-' + mateId);
+      const durInput = document.getElementById('custom-dur-' + mateId);
+      const unitSelect = document.getElementById('custom-unit-' + mateId);
+      const emojiInput = document.getElementById('custom-emoji-' + mateId);
+
+      const name = nameInput ? nameInput.value.trim() : '';
+      if (!name) {
+        alert('กรุณากรอกชื่อเครื่องใช้ไฟฟ้า');
+        return;
+      }
+      const watts = Math.max(1, parseInt(wattsInput.value, 10) || 100);
+      const durVal = Math.max(0.1, parseFloat(durInput.value) || 1);
+      const unit = unitSelect ? unitSelect.value : 'hours';
+      const durationMin = unit === 'hours' ? Math.round(durVal * 60) : Math.round(durVal);
+      const emoji = emojiInput && emojiInput.value.trim() ? emojiInput.value.trim() : '⚡';
+
+      const m = STATE.roommates.find(x => x.id === mateId);
+      if (m) {
+        if (!m.customAppliances) m.customAppliances = [];
+        m.customAppliances.push({
+          id: 'ca_' + Date.now(),
+          name,
+          emoji,
+          watts,
+          durationMin,
+          enabled: true
+        });
+        STATE.addingCustomFor = null;
+        if (STATE.hasCalculated) STATE.isStale = true;
+        playCashSound();
+        render();
+        showToast('เพิ่ม ' + name + ' เรียบร้อยแล้ว ⚡');
+      }
+    }
+
+    function openReceiptModal() {
+      if (!STATE.hasCalculated) {
+        triggerCalculateAction();
+      }
+      const modal = document.getElementById('receipt-modal');
+      const stamp = document.getElementById('receipt-stamp');
+      modal.classList.remove('hidden');
+
+      if (window.confetti) {
+        window.confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+      }
+
+      const results = calculate();
+      const room = document.getElementById('input-room').value || '402';
+      const month = document.getElementById('input-month').value || 'เดือนล่าสุด';
+      document.getElementById('receipt-meta').innerText = `ห้อง ${room} • รอบบิล ${month} • แอร์ ${STATE.selectedBTU.toLocaleString()} BTU`;
+      document.getElementById('receipt-total-bill').innerText = `฿${STATE.totalBill.toLocaleString()}`;
+      document.getElementById('receipt-base-fee').innerText = `฿${Math.round(STATE.totalBill * 0.25).toLocaleString()}`;
+      document.getElementById('receipt-var-fee').innerText = `฿${Math.round(STATE.totalBill * 0.75).toLocaleString()}`;
+      document.getElementById('receipt-mate-count').innerText = STATE.roommates.length;
+
+      const list = document.getElementById('receipt-roommates-list');
+      list.innerHTML = '';
+      results.forEach(m => {
+        const item = document.createElement('div');
+        item.className = 'bg-white p-2.5 rounded-xl border border-slate-200/90 shadow-2xs space-y-1';
+        
+        let appHtml = '';
+        if (m.activeAppliances && m.activeAppliances.length > 0) {
+          const appStrs = m.activeAppliances.map(a => `${a.emoji}${a.name} (${a.durationStr})`);
+          appHtml = `<div class="text-[9.5px] text-slate-600 font-medium pt-0.5">เครื่องใช้: ${appStrs.join(', ')}</div>`;
+        }
+
+        item.innerHTML = `
+          <div class="flex items-center justify-between font-bold text-slate-900">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${m.hex};"></span>
+              <span class="truncate max-w-[130px] font-bold">${m.name}</span>
+            </div>
+            <span class="text-sm font-black tabular-nums">
+              ฿${m.share.toLocaleString()} <span class="text-[10px] font-normal text-slate-500">(${m.percentage}%)</span>
+            </span>
+          </div>
+          <div class="text-[10px] text-slate-500 pl-4 space-y-0.5 leading-tight">
+            <div class="flex items-center justify-between">
+              <span>แอร์: ${m.hours} ชม./วัน @ ${m.temp}°C (${getTempMultiplier(m.temp).badge})</span>
+              <span class="text-[9px] font-mono text-slate-400">~${m.dailyKWh} หน่วย/วัน</span>
+            </div>
+            ${appHtml}
+          </div>
+        `;
+        list.appendChild(item);
+      });
+
+      // Update LINE preview
+      updateLinePreviewText(results, room, month);
+
+      stamp.classList.remove('hidden');
+      setTimeout(playStampSound, 180);
+    }
+
+    function updateLinePreviewText(results, room, month) {
+      const pp = document.getElementById('receipt-promptpay').value.trim();
+      let text = `⚡ สรุปค่าไฟหอห้อง ${room} [${month}] (ยอดรวม ฿${STATE.totalBill.toLocaleString()})\n`;
+      results.forEach(m => {
+        let appText = '';
+        if (m.activeAppliances && m.activeAppliances.length > 0) {
+          appText = ' + ' + m.activeAppliances.map(a => `${a.emoji}${a.name} (${a.durationStr})`).join(', ');
+        }
+        text += `- ${m.name}: ฿${m.share.toLocaleString()} บาท (${m.percentage}%)\n  แอร์ ${m.hours} ชม./วัน @ ${m.temp}°C${appText}\n`;
+      });
+      if (pp) {
+        text += `\n💳 โอนเข้าพร้อมเพย์/บัญชี: ${pp}\n`;
+      }
+      text += `\n💡 คำนวณยุติธรรมด้วย FairDorm Pro\n(กองกลาง 25% หารเท่า ${STATE.roommates.length} คน + แอร์และเครื่องใช้ 75% คิดตาม kWh จริง)`;
+      document.getElementById('line-preview-text').innerText = text;
+    }
+
+    function closeReceiptModal() {
+      playTick(400);
+      document.getElementById('receipt-modal').classList.add('hidden');
+      document.getElementById('receipt-stamp').classList.add('hidden');
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-message').innerText = msg;
+      toast.classList.remove('-translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('-translate-y-20', 'opacity-0');
+      }, 2500);
+    }
+
+    function copyLineSummary() {
+      playTick(900);
+      const results = calculate();
+      const room = document.getElementById('input-room').value || '402';
+      const month = document.getElementById('input-month').value || 'เดือนล่าสุด';
+      const pp = document.getElementById('receipt-promptpay').value.trim();
+
+      let text = `⚡ สรุปค่าไฟหอห้อง ${room} [${month}] (ยอดรวม ฿${STATE.totalBill.toLocaleString()})\n`;
+      results.forEach(m => {
+        let appText = '';
+        if (m.activeAppliances && m.activeAppliances.length > 0) {
+          appText = ' + ' + m.activeAppliances.map(a => `${a.emoji}${a.name} (${a.durationStr})`).join(', ');
+        }
+        text += `- ${m.name}: ฿${m.share.toLocaleString()} บาท (${m.percentage}%)\n  แอร์ ${m.hours} ชม./วัน @ ${m.temp}°C${appText}\n`;
+      });
+      if (pp) {
+        text += `\n💳 โอนเข้าพร้อมเพย์/บัญชี: ${pp}\n`;
+      }
+      text += `\n💡 คำนวณยุติธรรมด้วย FairDorm Pro\n(กองกลาง 25% หารเท่า ${STATE.roommates.length} คน + แอร์และเครื่องใช้ 75% คิดตาม kWh จริง)`;
+
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text);
+      }
+      showToast('คัดลอกสรุปข้อความแล้ว! ส่งลง LINE ได้เลย 🎉');
+    }
+
+    function downloadReceiptImage() {
+      playTick(800);
+      const element = document.getElementById('printable-receipt');
+      if (window.html2canvas) {
+        window.html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#fffdf9' }).then(canvas => {
+          const link = document.createElement('a');
+          link.download = `fairdorm-receipt-${Date.now()}.png`;
+          link.href = canvas.toDataURL();
+          link.click();
+          showToast('บันทึกรูปภาพสลิปเรียบร้อยแล้ว 📸');
+        });
+      } else {
+        showToast('กำลังดาวน์โหลดรูปภาพ...');
+      }
+    }
+
+    document.getElementById('input-total-bill').addEventListener('input', e => {
+      STATE.totalBill = parseFloat(e.target.value) || 0;
+      document.getElementById('bill-formatted-badge').innerText = `฿${STATE.totalBill.toLocaleString()}`;
+      if (STATE.hasCalculated) STATE.isStale = true;
+      render();
+    });
+
+    document.getElementById('receipt-promptpay').addEventListener('input', () => {
+      const results = calculate();
+      const room = document.getElementById('input-room').value || '402';
+      const month = document.getElementById('input-month').value || 'เดือนล่าสุด';
+      updateLinePreviewText(results, room, month);
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      playTick(500);
+      STATE.totalBill = 2400;
+      STATE.selectedBTU = 12000;
+      STATE.btuMultiplier = 1.0;
+      STATE.hasCalculated = false;
+      STATE.isStale = false;
+      STATE.addingCustomFor = null;
+      STATE.roommates = [
+        {
+          id: 'm1',
+          name: 'ฉัน (เมท 1)',
+          color: 'emerald',
+          hex: '#10b981',
+          hours: 10,
+          temp: 23,
+          appliances: { gaming_pc: true, cooking_pot: false, hair_dryer: false, iron: false },
+          appDurations: { gaming_pc: 360, cooking_pot: 30, hair_dryer: 15, iron: 15 },
+          customAppliances: []
+        },
+        {
+          id: 'm2',
+          name: 'เมท 2',
+          color: 'cyan',
+          hex: '#06b6d4',
+          hours: 4,
+          temp: 25,
+          appliances: { gaming_pc: false, cooking_pot: true, hair_dryer: false, iron: false },
+          appDurations: { gaming_pc: 360, cooking_pot: 30, hair_dryer: 15, iron: 15 },
+          customAppliances: []
+        }
+      ];
+      document.getElementById('input-total-bill').value = 2400;
+      document.getElementById('bill-formatted-badge').innerText = '฿2,400';
+      setBTU(12000);
+      render();
+      showToast('รีเซ็ตการตั้งค่าเริ่มต้นเรียบร้อย ↺');
+    });
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
